@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مركز التحكم بالعمليات | Operations Control Center</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#0A0D14;--bg-elev:#10141D;--card:#141924;--card-2:#171D29;--border:#232A3A;--border-soft:var(--track);--text:#E7EAF1;--text-dim:#94A0B8;--text-faint:#5C6680;--blue:#3E7BFA;--blue-dim:#1C3B7A;--green:#27C281;--green-dim:#123B29;--red:#F04B4B;--red-dim:#4A1B1B;--amber:#F5A623;--amber-dim:#4A3512;--track:var(--track);--hover:var(--hover);--border-strong:var(--border-strong);--overlay:var(--overlay);--mono:'IBM Plex Mono',monospace;--font:'IBM Plex Sans Arabic',sans-serif}
+[data-theme=light]{color-scheme:light;--bg:#F1F4F9;--bg-elev:#F6F8FB;--card:#FFFFFF;--card-2:#FFFFFF;--border:#D9DFEA;--border-soft:#E8ECF3;--text:#182033;--text-dim:#4F5B75;--text-faint:#7B869E;--blue:#2F6BEA;--blue-dim:#E2EBFE;--green:#138A5B;--green-dim:#DCF4E9;--red:#D33232;--red-dim:#FCE3E3;--amber:#B26A00;--amber-dim:#FDEFD3;--track:#E3E8F1;--hover:#F2F5FA;--border-strong:#B5BECF;--overlay:rgba(20,28,45,.45)}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:radial-gradient(1200px 600px at 15% -10%,rgba(62,123,250,.07),transparent 60%),var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 22px 60px}
+.hdr{flex-wrap:wrap;gap:14px;display:flex;justify-content:space-between;align-items:center;padding:18px 24px;margin-bottom:22px;background:linear-gradient(180deg,var(--card-2),var(--bg-elev));border:1px solid var(--border);border-radius:14px}
+.hdr-title{display:flex;align-items:center;gap:14px}.hdr-badge{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--blue),#7B5CFA);display:flex;align-items:center;justify-content:center;font-size:20px}
+.hdr h1{font-size:20px;margin:0}.hdr p{margin:2px 0 0;color:var(--text-dim);font-size:13px}
+.hdr-right{text-align:end}.hdr-right .lbl{color:var(--text-faint);font-size:11px}.hdr-right .val{direction:ltr;font-family:var(--mono);font-size:14px;color:var(--green);font-weight:600}
+.sec{margin:30px 0 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.sec h2{font-size:15px;margin:0;display:flex;align-items:center;gap:9px}.sec h2 .dash{width:3px;height:16px;background:var(--blue);border-radius:2px}.sec .sub{color:var(--text-faint);font-size:12px;margin-top:2px}
+.grid{display:grid;gap:14px}.grid-4{grid-template-columns:repeat(4,1fr)}.grid-2{grid-template-columns:repeat(2,1fr)}.grid-5{grid-template-columns:repeat(5,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-5,.grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.grid-4,.grid-2,.grid-5,.grid-3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px}.card-flat{padding:18px 20px}
+.kpi-top{display:flex;justify-content:space-between;margin-bottom:10px}.kpi-label{font-size:12px;color:var(--text-dim)}
+.kpi-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.icon-blue{background:var(--blue-dim)}.icon-green{background:var(--green-dim)}.icon-red{background:var(--red-dim)}.icon-amber{background:var(--amber-dim)}
+.kpi-value{font-family:var(--mono);font-size:26px;font-weight:600;margin-bottom:4px}.kpi-sub{font-size:11.5px;color:var(--text-faint)}
+.progress-track{height:6px;border-radius:4px;background:var(--track);overflow:hidden;margin-top:10px}.progress-fill{height:100%;border-radius:4px}
+.fill-green{background:var(--green)}.fill-amber{background:var(--amber)}.fill-red{background:var(--red)}.fill-blue{background:var(--blue)}
+.tag{display:inline-flex;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px}
+.tag-green{background:var(--green-dim);color:var(--green)}.tag-red{background:var(--red-dim);color:var(--red)}.tag-amber{background:var(--amber-dim);color:var(--amber)}.tag-blue{background:var(--blue-dim);color:var(--blue)}
+.vendor-heading{display:flex;align-items:center;gap:8px;grid-column:1/-1}.vendor-heading .line{flex:1;height:1px;background:var(--border)}.vendor-heading span{font-size:12px;font-weight:700;color:var(--text-dim)}
+.cmp-wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}@media(max-width:980px){.cmp-wrap{grid-template-columns:1fr}}
+table.cmp{width:100%;border-collapse:collapse;font-size:13px}table.cmp th,table.cmp td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--border-soft)}
+table.cmp th{color:var(--text-faint);font-size:11.5px}table.cmp td:first-child,table.cmp th:first-child{text-align:start;color:var(--text-dim)}table.cmp td.num{font-family:var(--mono);font-weight:600}
+.diff-box{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:8px}.diff-value{font-family:var(--mono);font-size:30px;font-weight:700}.diff-label{font-size:12.5px;color:var(--text-dim)}
+.chart-card canvas{max-height:270px}.chart-title{font-size:13px;font-weight:700}.chart-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:10px}
+.gauge-wrap{position:relative;display:flex;flex-direction:column;align-items:center}.gauge-center{position:absolute;top:58%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.gauge-value{font-family:var(--mono);font-size:32px;font-weight:700}.gauge-caption{font-size:11.5px;color:var(--text-faint)}
+.gauge-legend{display:flex;gap:14px;margin-top:6px;font-size:11px;color:var(--text-faint)}.gauge-legend span{display:flex;align-items:center;gap:5px}.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.alert-card{display:flex;align-items:center;gap:13px;border-inline-start:3px solid transparent}.sev-critical{border-inline-start-color:var(--red)}.sev-warning{border-inline-start-color:var(--amber)}.sev-ok{border-inline-start-color:var(--green)}.sev-info{border-inline-start-color:var(--blue)}
+.alert-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px}.alert-num{font-family:var(--mono);font-size:22px;font-weight:700}.alert-txt{font-size:12px;color:var(--text-dim)}
+.mgmt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}@media(max-width:900px){.mgmt-grid{grid-template-columns:repeat(2,1fr)}}
+.field{display:flex;flex-direction:column;gap:6px}.field label{font-size:11.5px;color:var(--text-dim)}
+input,select,textarea{background:var(--bg-elev);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:9px 11px;font-family:var(--font);font-size:13px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--blue)}textarea{resize:vertical;min-height:60px}
+.btn{display:inline-flex;align-items:center;gap:7px;justify-content:center;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px 15px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);white-space:nowrap}
+.btn:hover{border-color:var(--border-strong)}.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn-danger{background:transparent;border-color:var(--red);color:var(--red)}.btn-sm{padding:6px 10px;font-size:12px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}.toolbar-left{display:flex;gap:8px;flex-wrap:wrap}
+.filters{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+@media(max-width:1100px){.filters{grid-template-columns:repeat(3,1fr)}}@media(max-width:640px){.filters{grid-template-columns:repeat(2,1fr)}}
+.search-box{position:relative;margin-bottom:12px}.search-box input{padding-inline-start:36px}.search-box .ic{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);font-size:14px}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}.table-scroll{overflow:auto;max-height:600px}
+table.reg{width:100%;border-collapse:collapse;font-size:12.8px;min-width:1050px}
+table.reg thead th{position:sticky;top:0;z-index:1;white-space:nowrap;background:var(--bg-elev);color:var(--text-faint);font-size:11px;text-align:start;padding:11px 12px;border-bottom:1px solid var(--border)}
+table.reg tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);vertical-align:middle}table.reg tbody tr:hover{background:var(--hover)}
+.desc-cell{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-progress{width:80px;height:5px;background:var(--track);border-radius:3px;overflow:hidden;margin-bottom:4px}.mini-progress-fill{height:100%}.qty-txt{font-family:var(--mono);font-size:11.5px;color:var(--text-dim)}
+.row-actions{display:flex;gap:6px}.act-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--bg-elev);color:var(--text-dim);cursor:pointer}
+.act-btn:hover{border-color:var(--blue)}.act-btn.del:hover{border-color:var(--red)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-faint)}.em-icon{font-size:34px}
+.modal-backdrop{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}.modal-backdrop.open{display:flex}
+.modal{background:var(--card-2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border)}.modal-hdr h3{margin:0;font-size:15.5px}
+.modal-close{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer}.modal-body{padding:20px 22px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.form-grid .full{grid-column:1/-1}@media(max-width:560px){.form-grid{grid-template-columns:1fr}}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--border)}
+.hint{font-size:11px;color:var(--text-faint);margin-top:4px}.err-text{color:var(--red);font-size:11.5px;display:none}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card-2);border:1px solid var(--border);padding:12px 20px;border-radius:10px;font-size:13px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s}
+.toast.show{opacity:1}.toast.ok{border-color:var(--green)}.toast.bad{border-color:var(--red)}
+footer.note{text-align:center;color:var(--text-faint);font-size:11.5px;margin-top:30px}.hidden-file{display:none}
+/* Projects */
+.project-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}@media(max-width:700px){.project-stats{grid-template-columns:repeat(2,1fr)}}
+.project-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 15px}.ps-label{font-size:11px;color:var(--text-faint);margin-bottom:5px}.ps-value{font-family:var(--mono);font-size:22px;font-weight:700}
+.project-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}@media(max-width:1100px){.project-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.project-grid{grid-template-columns:1fr}}
+.project-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:17px;cursor:pointer}.project-card:hover{border-color:var(--border-strong)}
+.project-card-top{display:flex;justify-content:space-between;gap:12px}.project-card-ref{font-family:var(--mono);font-size:11px;color:var(--blue);font-weight:700}
+.project-card h3{font-size:15px;margin:5px 0 4px}.project-card-sub{font-size:11.5px;color:var(--text-faint);min-height:18px}
+.project-card-bottom{display:flex;justify-content:space-between;color:var(--text-dim);font-size:11px}
+.detail-header{display:flex;align-items:center;gap:18px;padding:17px 18px;background:linear-gradient(180deg,var(--card-2),var(--card));border:1px solid var(--border);border-radius:14px;flex-wrap:wrap}
+.detail-header-main{flex:1}.detail-kicker{font-family:var(--mono);font-size:11px;color:var(--blue);font-weight:700}.detail-header h2{margin:3px 0 2px;font-size:20px}.detail-meta{font-size:12px;color:var(--text-faint)}
+.detail-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}@media(max-width:800px){.detail-summary{grid-template-columns:repeat(2,1fr)}}
+.summary-item{background:var(--bg-elev);border:1px solid var(--border);border-radius:9px;padding:11px}.summary-label{font-size:10px;color:var(--text-faint);margin-bottom:4px}.summary-value{font-size:15px;font-weight:700}
+.veh-add{display:grid;grid-template-columns:1.1fr 1.3fr 1.3fr 1.4fr auto;gap:10px;align-items:end}@media(max-width:800px){.veh-add{grid-template-columns:1fr 1fr}}
+.plate{font-weight:800;letter-spacing:.5px}.imei{font-family:var(--mono);direction:ltr;display:inline-block;color:var(--text-dim)}
+.done-row td{opacity:.6}input[type=checkbox]{width:auto;accent-color:var(--green)}
+details summary{cursor:pointer;color:var(--text-dim);font-size:12.5px;margin-top:12px}
+
+.hdr-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg-elev)}
+.seg button{border:0;background:transparent;color:var(--text-dim);padding:7px 12px;font:600 12px var(--font);cursor:pointer}
+.seg button+button{border-inline-start:1px solid var(--border)}.seg button.active{background:var(--blue);color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.btn:hover{background:var(--hover)}.btn-primary:hover{background:var(--blue);filter:brightness(1.1)}.btn:not(.btn-primary):not(.btn-danger){color:var(--text-dim)}
+.card,.project-card,.table-wrap,.hdr{box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.detail-header{border-inline-start:4px solid var(--blue)}.crumb-link{cursor:pointer;text-decoration:underline}
+.summary-item.big .summary-value{font-size:24px;font-family:var(--mono)}
+.big-track{height:10px;margin:12px 0 0}
+.project-card:hover{background:var(--hover)}.modal{box-shadow:0 20px 60px rgba(0,0,0,.35)}
+@media(max-width:700px){.wrap{padding:14px 12px 40px}.hdr{padding:14px}.toolbar .btn{flex:1}}
+</style></head>
+<body>
+<div id="loginOv" style="display:none;position:fixed;inset:0;z-index:9999;background:#0b1220;align-items:center;justify-content:center;font-family:inherit">
+<div style="background:#162033;color:#e8eefc;padding:28px;border-radius:14px;width:min(360px,92vw);display:flex;flex-direction:column;gap:12px;direction:rtl">
+<h2 style="margin:0 0 4px">مركز التحكم بالعمليات</h2><div style="opacity:.7;font-size:13px">سجّل دخولك للمتابعة</div>
+<input id="lgEmail" type="email" placeholder="البريد الإلكتروني" style="padding:10px;border-radius:8px;border:1px solid #2c3a57;background:#0f1828;color:#fff;direction:ltr">
+<input id="lgPass" type="password" placeholder="كلمة المرور" style="padding:10px;border-radius:8px;border:1px solid #2c3a57;background:#0f1828;color:#fff;direction:ltr">
+<button id="lgBtn" style="padding:10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;font-size:15px;cursor:pointer">دخول</button>
+<div id="lgErr" style="color:#f87171;font-size:13px;min-height:16px"></div></div></div>
+<div id="syncBadge" style="position:fixed;bottom:10px;left:10px;z-index:900;background:#162033;color:#e8eefc;padding:6px 12px;border-radius:20px;font-size:12px;display:none;gap:10px;align-items:center;direction:rtl"><span id="syncTxt"></span><a href="#" id="logoutLnk" style="color:#93c5fd">خروج</a></div>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-title"><div class="hdr-badge">🛰️</div><div><h1>مركز التحكم بالعمليات</h1><p>إدارة اتصال المركبات وأعمال أجهزة التتبع</p></div></div>
+  <div class="hdr-tools"><div class="seg" id="langSeg"><button data-lang="ar">العربية</button><button data-lang="en">English</button></div><div class="seg" id="themeSeg"><button data-theme-v="dark">🌙 داكن</button><button data-theme-v="light">☀️ فاتح</button></div><div class="hdr-right"><div class="lbl">آخر تحديث</div><div class="val" id="lastUpdated">—</div></div></div>
+</div>
+
+<div class="sec"><div><h2><span class="dash"></span>اتصال المركبات</h2><div class="sub">مقارنة حالة الاتصال بين نظامي AFAQY و RENTY</div></div></div>
+<div class="grid grid-4" id="connectivityCards"></div>
+
+<div class="sec" style="margin-top:22px"><div><h2><span class="dash" style="background:var(--green)"></span>مقارنة AFAQY مقابل RENTY</h2></div></div>
+<div class="cmp-wrap">
+  <div class="card card-flat"><table class="cmp" id="cmpTable"><thead><tr><th>المؤشر</th><th>AFAQY</th><th>RENTY</th></tr></thead><tbody></tbody></table></div>
+  <div class="card card-flat diff-box"><div class="kpi-label">فارق نسبة الاتصال</div><div class="diff-value" id="diffValue"></div><div class="diff-label" id="diffLabel"></div></div>
+</div>
+
+<div class="sec" style="margin-top:22px"><div><h2><span class="dash" style="background:var(--amber)"></span>تحديث بيانات الاتصال</h2><div class="sub">حدّث أعداد المركبات المتصلة وغير المتصلة يدويًا</div></div></div>
+<div class="card card-flat">
+  <div class="mgmt-grid">
+    <div class="field"><label>AFAQY - متصلة</label><input type="number" min="0" id="mAfaqyConn"></div>
+    <div class="field"><label>AFAQY - غير متصلة</label><input type="number" min="0" id="mAfaqyDisc"></div>
+    <div class="field"><label>RENTY - متصلة</label><input type="number" min="0" id="mRentyConn"></div>
+    <div class="field"><label>RENTY - غير متصلة</label><input type="number" min="0" id="mRentyDisc"></div>
+  </div>
+  <div style="margin-top:14px"><button class="btn btn-primary" id="saveConnBtn">💾 حفظ بيانات الاتصال</button></div>
+</div>
+
+<div class="sec" style="margin-top:26px"><div><h2><span class="dash"></span>مؤشرات الأعمال التشغيلية</h2></div></div>
+<div class="grid grid-5" id="workKpis"></div>
+
+<div class="sec" style="margin-top:22px"><div><h2><span class="dash" style="background:var(--green)"></span>التحليل البصري للأعمال</h2></div></div>
+<div class="grid grid-3">
+  <div class="card chart-card"><div class="chart-title">حالة أوامر العمل</div><div class="chart-sub">انقر على أي جزء لتصفية الجدول</div><canvas id="statusChart"></canvas></div>
+  <div class="card chart-card"><div class="chart-title">الكمية حسب نوع العمل</div><div class="chart-sub">إجمالي الكميات المطلوبة لكل نوع</div><canvas id="typeChart"></canvas></div>
+  <div class="card chart-card"><div class="chart-title">مؤشر الأداء التشغيلي</div><div class="chart-sub">نسبة الإنجاز الكلية</div>
+    <div class="gauge-wrap"><canvas id="gaugeChart" style="max-height:190px"></canvas><div class="gauge-center"><div class="gauge-value" id="gaugeValue"></div><div class="gauge-caption" id="gaugeCaption"></div></div></div>
+    <div class="gauge-legend"><span><i class="dot" style="background:var(--red)"></i>حرج &lt;60%</span><span><i class="dot" style="background:var(--amber)"></i>تحذير 60-79%</span><span><i class="dot" style="background:var(--green)"></i>ممتاز 80%+</span></div></div>
+</div>
+<div class="grid grid-2" style="margin-top:14px">
+  <div class="card chart-card"><div class="chart-title">اتجاه الإنجاز اليومي</div><div class="chart-sub">الكميات المُنجزة حسب التاريخ</div><canvas id="trendChart"></canvas></div>
+  <div class="card chart-card"><div class="chart-title">الأداء حسب القسم</div><div class="chart-sub">نسبة الإنجاز لكل قسم / جهة</div><canvas id="deptChart"></canvas></div>
+</div>
+
+<div class="sec" style="margin-top:26px"><div><h2><span class="dash" style="background:var(--red)"></span>تنبيهات العمليات</h2></div></div>
+<div class="grid grid-4" id="alertsGrid"></div>
+
+<div class="sec" style="margin-top:28px"><div><h2><span class="dash"></span>سجل أوامر العمل</h2><div class="sub">إدارة كاملة لأوامر العمل مع التصفية والبحث</div></div></div>
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button class="btn btn-primary" id="addWorkBtn">➕ إضافة أمر عمل</button>
+    <button class="btn" id="exportCsvBtn">⬇️ تصدير CSV</button>
+    <button class="btn" id="importCsvBtn">⬆️ استيراد CSV</button>
+    <button class="btn" id="templateCsvBtn">📄 تحميل نموذج CSV</button>
+    <input type="file" id="csvFileInput" class="hidden-file" accept=".csv">
+  </div>
+  <button class="btn btn-sm" id="resetFiltersBtn">↺ إعادة تعيين الفلاتر</button>
+</div>
+<div class="search-box"><span class="ic">🔍</span><input type="text" id="searchInput" placeholder="بحث في الوصف، القسم، المسؤول، نوع العمل..."></div>
+<div class="filters">
+  <div class="field"><label>من تاريخ</label><input type="date" id="fDateFrom"></div>
+  <div class="field"><label>إلى تاريخ</label><input type="date" id="fDateTo"></div>
+  <div class="field"><label>نوع العمل</label><select id="fWorkType"></select></div>
+  <div class="field"><label>القسم / الجهة</label><select id="fDept"></select></div>
+  <div class="field"><label>الأولوية</label><select id="fPriority"><option value="">الكل</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+  <div class="field"><label>الحالة</label><select id="fStatus"><option value="">الكل</option><option>Completed</option><option>In Progress</option><option>Overdue</option><option>Cancelled</option></select></div>
+</div>
+<div class="table-wrap"><div class="table-scroll"><table class="reg"><thead><tr>
+  <th>التاريخ</th><th>نوع العمل</th><th>الوصف</th><th>القسم</th><th>الأولوية</th><th>الكمية</th><th>المُنجز</th><th>المتبقي</th><th>نسبة الإنجاز</th><th>الحالة</th><th>المسؤول</th><th>إجراءات</th>
+</tr></thead><tbody id="tableBody"></tbody></table></div>
+<div class="empty-state" id="emptyState" style="display:none"><div class="em-icon">🗂️</div><div>لا توجد نتائج مطابقة</div></div></div>
+
+<!-- PROJECTS -->
+<section id="projectWorkspace" style="margin-top:34px">
+  <div id="projectsPage">
+    <div class="sec" style="margin-top:0"><div><h2><span class="dash" style="background:var(--green)"></span>المشاريع</h2><div class="sub">كل مشروع يحتوي على مركبة أو عدة مركبات مع أرقام لوحاتها</div></div></div>
+    <div class="project-stats" id="projectStats"></div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="newProjectBtn">➕ مشروع جديد</button>
+      <div style="min-width:260px;flex:1;max-width:420px"><div class="search-box" style="margin:0"><span class="ic">🔍</span><input id="projectSearch" placeholder="بحث بالمشروع، الجهة، اللوحة، IMEI، الموقع..."></div></div>
+      <select id="pfStatus" style="width:170px"><option value="">كل الحالات</option><option>جديد</option><option>قيد التنفيذ</option><option>بانتظار المورد</option><option>مكتمل</option><option>ملغي</option></select>
+    </div>
+    <div class="project-grid" id="projectCards"></div>
+    <div class="empty-state" id="projectsEmpty" style="display:none"><div class="em-icon">📁</div><div>لا توجد مشاريع. أنشئ مشروعًا جديدًا.</div></div>
+  </div>
+
+  <div id="projectDetailPage" style="display:none">
+    <div class="detail-header">
+      <button class="btn" id="backToProjectsBtn">← العودة إلى المشاريع</button>
+      <div class="detail-header-main"><div class="detail-kicker"><span class="crumb-link" id="crumbBack">المشاريع</span> › <span id="dRef"></span></div><h2 id="dTitle"></h2><div class="detail-meta" id="dMeta"></div></div>
+      <div id="dStatus"></div>
+      <button class="btn" id="editProjectBtn">✏️ تعديل المشروع</button>
+      <button class="btn btn-danger" id="delProjectBtn">🗑️ حذف</button>
+    </div>
+    <div class="detail-summary" id="dSummary"></div><div class="progress-track big-track"><div class="progress-fill fill-green" id="dProg" style="width:0"></div></div>
+
+    <div class="sec"><div><h2><span class="dash" style="background:var(--blue)"></span>مركبات المشروع</h2></div>
+      <button class="btn" id="exportVehBtn">📊 تصدير Excel</button></div>
+    <div class="card card-flat">
+      <input type="hidden" id="vEditId">
+      <div class="veh-add">
+        <div class="field"><label>رقم اللوحة *</label><input id="vPlate" placeholder="أ ب ت 1234"></div>
+        <div class="field"><label>IMEI</label><input id="vImei" placeholder="اختياري"></div>
+        <div class="field"><label>الموقع</label><input id="vLoc" placeholder="اختياري"></div><div class="field"><label>ملاحظة</label><input id="vNote" placeholder="اختياري"></div>
+        <div style="display:flex;gap:6px"><button class="btn btn-primary" id="vSaveBtn">➕ إضافة مركبة</button><button class="btn" id="vCancelBtn" style="display:none">إلغاء</button></div>
+      </div>
+      <details><summary>إضافة عدة مركبات دفعة واحدة</summary>
+        <textarea id="vBulk" style="margin-top:10px;min-height:100px"></textarea>
+        <button class="btn btn-sm" id="vBulkBtn" style="margin-top:8px">➕ إضافة الكل</button></details>
+    </div>
+    <div class="search-box" style="margin:14px 0"><span class="ic">🔍</span><input id="vSearch" placeholder="بحث باللوحة، IMEI، الموقع، أو الملاحظة..."></div>
+    <div class="table-wrap"><div class="table-scroll"><table class="reg" style="min-width:860px"><thead><tr><th>#</th><th>رقم اللوحة</th><th>IMEI</th><th>الموقع</th><th>ملاحظة</th><th>تم التنفيذ</th><th>إجراءات</th></tr></thead><tbody id="vBody"></tbody></table></div>
+    <div class="empty-state" id="vEmpty" style="display:none"><div class="em-icon">🚗</div><div id="vEmptyMsg">لا توجد مركبات بعد. أضف أول مركبة.</div></div></div>
+  </div>
+</section>
+
+<footer class="note">مركز التحكم بالعمليات — تُحفظ البيانات على Supabase</footer>
+</div>
+
+<!-- Work order modal -->
+<div class="modal-backdrop" id="modalBackdrop"><div class="modal">
+  <div class="modal-hdr"><h3 id="modalTitle">إضافة أمر عمل جديد</h3><button class="modal-close" id="modalCloseBtn">✕</button></div>
+  <div class="modal-body"><form id="workForm" onsubmit="return false"><input type="hidden" id="workId"><div class="form-grid">
+    <div class="field"><label>التاريخ *</label><input type="date" id="fmDate"></div>
+    <div class="field"><label>نوع العمل *</label><select id="fmWorkType"></select></div>
+    <div class="field full"><label>وصف العمل *</label><textarea id="fmDesc"></textarea></div>
+    <div class="field"><label>القسم / الجهة *</label><select id="fmDept"><option>Operations</option><option>Fleet</option><option>IT</option><option>Maintenance</option><option>Branches</option><option>Customer Service</option><option>Other</option></select></div>
+    <div class="field"><label>الأولوية *</label><select id="fmPriority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
+    <div class="field"><label>الكمية المطلوبة *</label><input type="number" id="fmReqQty" min="1"></div>
+    <div class="field"><label>الكمية المُنجزة</label><input type="number" id="fmDoneQty" min="0" value="0"></div>
+    <div class="field"><label>تاريخ الاستحقاق</label><input type="date" id="fmDueDate"></div>
+    <div class="field"><label>المسؤول / الفريق *</label><input type="text" id="fmOwner"></div>
+    <div class="field"><label>الحالة</label><select id="fmStatus"><option value="auto">تلقائي</option><option value="Cancelled">Cancelled</option></select><div class="hint">تلقائي: تُحدَّد الحالة حسب الكميات وتاريخ الاستحقاق</div></div>
+    <div class="field"><label>الكمية المتبقية</label><input type="text" id="fmRemaining" disabled></div>
+    <div class="field full"><label>ملاحظات</label><textarea id="fmNotes"></textarea></div>
+    <div class="err-text full" id="formErr"></div>
+  </div></form></div>
+  <div class="modal-footer"><button class="btn" id="cancelFormBtn">إلغاء</button><button class="btn btn-primary" id="saveWorkBtn">💾 حفظ أمر العمل</button></div>
+</div></div>
+
+<!-- Delete modal -->
+<div class="modal-backdrop" id="deleteBackdrop"><div class="modal" style="max-width:420px">
+  <div class="modal-hdr"><h3>تأكيد الحذف</h3><button class="modal-close" id="delCloseBtn">✕</button></div>
+  <div class="modal-body">هل أنت متأكد من حذف أمر العمل هذا؟ لا يمكن التراجع عن هذا الإجراء.</div>
+  <div class="modal-footer"><button class="btn" id="delCancelBtn">إلغاء</button><button class="btn btn-danger" id="delConfirmBtn">حذف نهائي</button></div>
+</div></div>
+
+<!-- Project modal -->
+<div class="modal-backdrop" id="projectBackdrop"><div class="modal">
+  <div class="modal-hdr"><h3 id="pTitle">مشروع جديد</h3><button class="modal-close" id="pClose">✕</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="field full"><label>اسم المشروع *</label><input id="pName" placeholder="مثال: إزالة أجهزة التتبع من المركبات المباعة"></div>
+    <div class="field"><label>الجهة / المالك</label><input id="pOwner" placeholder="Yelo / عميل / شركة"></div>
+    <div class="field"><label>المورد / الفريق</label><input id="pVendor" placeholder="AFAQY / RENTY / FIT"></div>
+    <div class="field"><label>الفرع / الموقع</label><input id="pBranch"></div>
+    <div class="field"><label>المسؤول</label><input id="pManager"></div>
+    <div class="field"><label>الأولوية</label><select id="pPriority"><option>منخفضة</option><option selected>متوسطة</option><option>عالية</option><option>حرجة</option></select></div>
+    <div class="field"><label>الحالة</label><select id="pStatus"><option>جديد</option><option>قيد التنفيذ</option><option>بانتظار المورد</option><option>مكتمل</option><option>ملغي</option></select></div>
+    <div class="field"><label>تاريخ الاستحقاق</label><input type="date" id="pDue"></div>
+    <div class="field full"><label>وصف / ملاحظات</label><textarea id="pNotes"></textarea></div>
+    <div class="field full" id="pVehWrap"><label>المركبات (اختياري) — كل مركبة في سطر: اللوحة، IMEI، الموقع، ملاحظة</label><textarea id="pVehicles" style="min-height:100px"></textarea></div>
+    <div class="err-text full" id="pErr"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" id="pCancel">إلغاء</button><button class="btn btn-primary" id="pSave">💾 حفظ المشروع</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY='occ_dashboard_data_v1';
+const WORK_TYPE_LABELS={'Tracking Device Installation':'تركيب جهاز تتبع','Tracking Device Maintenance':'صيانة جهاز تتبع','Tracking Device Removal':'إزالة جهاز تتبع','Tracking Device Replacement':'استبدال جهاز تتبع','Tracking Device Inspection':'فحص جهاز تتبع','Device Reactivation':'إعادة تفعيل الجهاز','Connectivity Issue Resolution':'حل مشكلة اتصال','Tracking Device Relocation':'نقل جهاز التتبع','Device Data Update':'تحديث بيانات الجهاز','Vehicle Data Update':'تحديث بيانات المركبة','Vehicle/System Linking':'ربط المركبة بالنظام','Unlinking':'فك الربط','Vehicle Data Reconciliation':'مطابقة بيانات المركبات','Other':'أخرى'};
+const STATUS_LABELS={'Completed':'مكتمل','In Progress':'قيد التنفيذ','Overdue':'متأخر','Cancelled':'ملغي'};
+const PRIORITY_LABELS={'Low':'منخفضة','Medium':'متوسطة','High':'عالية','Critical':'حرجة'};
+const DEPT_LABELS={'Operations':'العمليات','Fleet':'الأسطول','IT':'تقنية المعلومات','Maintenance':'الصيانة','Branches':'الفروع','Customer Service':'خدمة العملاء','Other':'أخرى'};
+const $=id=>document.getElementById(id);
+let charts={},pendingDeleteId=null,curPid='',pFilters={search:'',status:''};
+let lang=localStorage.getItem('occ_lang')||'ar',theme=localStorage.getItem('occ_theme')||'dark';
+/* ===== i18n: Arabic is the source language (stored data uses it); EN maps Arabic -> English ===== */
+const EN={'مركز التحكم بالعمليات':'Operations Control Center','إدارة اتصال المركبات وأعمال أجهزة التتبع':'Vehicle connectivity and tracking-device operations','آخر تحديث':'Last updated','داكن':'Dark','فاتح':'Light',
+'اتصال المركبات':'Vehicle Connectivity','مقارنة حالة الاتصال بين نظامي AFAQY و RENTY':'Connectivity comparison between AFAQY and RENTY','مقارنة AFAQY مقابل RENTY':'AFAQY vs RENTY','المؤشر':'Metric','فارق نسبة الاتصال':'Connectivity rate gap',
+'تحديث بيانات الاتصال':'Update Connectivity Data','حدّث أعداد المركبات المتصلة وغير المتصلة يدويًا':'Manually update connected and disconnected vehicle counts','AFAQY - متصلة':'AFAQY - Connected','AFAQY - غير متصلة':'AFAQY - Disconnected','RENTY - متصلة':'RENTY - Connected','RENTY - غير متصلة':'RENTY - Disconnected','حفظ بيانات الاتصال':'Save connectivity data',
+'المركبات المتصلة':'Connected vehicles','المركبات غير المتصلة':'Disconnected vehicles','إجمالي المركبات':'Total vehicles','المتصلة':'Connected','غير المتصلة':'Disconnected','نسبة الاتصال':'Connectivity rate','أداء النظامين متقارب في نسبة الاتصال حاليًا.':'Both systems currently have a similar connectivity rate.',
+'مؤشرات الأعمال التشغيلية':'Operational KPIs','إجمالي أوامر العمل':'Total work orders','مكتمل':'Completed','قيد التنفيذ':'In progress','متأخر':'Overdue','ملغي':'Cancelled','نسبة الإنجاز':'Completion','يتطلب متابعة فورية':'Needs immediate follow-up','لا يوجد تأخير':'No delays',
+'التحليل البصري للأعمال':'Work Analytics','حالة أوامر العمل':'Work Order Status','انقر على أي جزء لتصفية الجدول':'Click any segment to filter the table','الكمية حسب نوع العمل':'Quantity by Work Type','إجمالي الكميات المطلوبة لكل نوع':'Total requested quantity per type','مؤشر الأداء التشغيلي':'Operational Performance','نسبة الإنجاز الكلية':'Overall completion rate',
+'حرج <60%':'Critical <60%','تحذير 60-79%':'Warning 60-79%','ممتاز 80%+':'Excellent 80%+','حرج':'Critical','تحذير':'Warning','ممتاز':'Excellent','اتجاه الإنجاز اليومي':'Daily Completion Trend','الكميات المُنجزة حسب التاريخ':'Completed quantity by date','الأداء حسب القسم':'Performance by Department','نسبة الإنجاز لكل قسم / جهة':'Completion rate per department',
+'تنبيهات العمليات':'Operations Alerts','أوامر عمل متأخرة':'Overdue work orders','أوامر عمل مفتوحة (قيد التنفيذ + متأخر)':'Open work orders (in progress + overdue)','أوامر عمل مكتملة اليوم':'Work orders completed today','مركبات غير متصلة (AFAQY + RENTY)':'Disconnected vehicles (AFAQY + RENTY)',
+'سجل أوامر العمل':'Work Order Register','إدارة كاملة لأوامر العمل مع التصفية والبحث':'Full work order management with filtering and search','إضافة أمر عمل':'Add work order','تصدير CSV':'Export CSV','استيراد CSV':'Import CSV','تحميل نموذج CSV':'Download CSV template','إعادة تعيين الفلاتر':'Reset filters',
+'بحث في الوصف، القسم، المسؤول، نوع العمل...':'Search description, department, owner, work type...','من تاريخ':'From date','إلى تاريخ':'To date','نوع العمل':'Work type','القسم / الجهة':'Department','الأولوية':'Priority','الحالة':'Status','الكل':'All',
+'التاريخ':'Date','الوصف':'Description','القسم':'Department','الكمية':'Qty','المُنجز':'Done','المتبقي':'Remaining','نسبة الإنجاز':'Completion','المسؤول':'Responsible','إجراءات':'Actions','لا توجد نتائج مطابقة':'No matching results','تعديل':'Edit','حذف':'Delete',
+'تركيب جهاز تتبع':'Install tracking device','صيانة جهاز تتبع':'Maintain tracking device','إزالة جهاز تتبع':'Remove tracking device','استبدال جهاز تتبع':'Replace tracking device','فحص جهاز تتبع':'Inspect tracking device','إعادة تفعيل الجهاز':'Reactivate device','حل مشكلة اتصال':'Resolve connectivity issue','نقل جهاز التتبع':'Relocate tracking device','تحديث بيانات الجهاز':'Update device data','تحديث بيانات المركبة':'Update vehicle data','ربط المركبة بالنظام':'Link vehicle to system','فك الربط':'Unlink','مطابقة بيانات المركبات':'Reconcile vehicle data','أخرى':'Other',
+'العمليات':'Operations','الأسطول':'Fleet','تقنية المعلومات':'IT','الصيانة':'Maintenance','الفروع':'Branches','خدمة العملاء':'Customer Service','منخفضة':'Low','متوسطة':'Medium','عالية':'High','حرجة':'Critical','جديد':'New','بانتظار المورد':'Awaiting vendor','تلقائي':'Automatic',
+'إضافة أمر عمل جديد':'Add New Work Order','تعديل أمر العمل':'Edit Work Order','التاريخ *':'Date *','نوع العمل *':'Work type *','وصف العمل *':'Work description *','القسم / الجهة *':'Department *','الأولوية *':'Priority *','الكمية المطلوبة *':'Requested quantity *','الكمية المُنجزة':'Completed quantity','تاريخ الاستحقاق':'Due date','المسؤول / الفريق *':'Responsible / team *','الكمية المتبقية':'Remaining quantity','ملاحظات':'Notes','إلغاء':'Cancel','حفظ أمر العمل':'Save work order',
+'تلقائي: تُحدَّد الحالة حسب الكميات وتاريخ الاستحقاق':'Automatic: status is derived from quantities and due date','تأكيد الحذف':'Confirm Deletion','هل أنت متأكد من حذف أمر العمل هذا؟ لا يمكن التراجع عن هذا الإجراء.':'Are you sure you want to delete this work order? This cannot be undone.','حذف نهائي':'Delete permanently',
+'المشاريع':'Projects','كل مشروع يحتوي على مركبة أو عدة مركبات مع أرقام لوحاتها':'Each project contains one or more vehicles with their plate numbers','إجمالي المشاريع':'Total projects','مشاريع مفتوحة':'Open projects','مشاريع مكتملة':'Completed projects','مشروع جديد':'New project','كل الحالات':'All statuses',
+'بحث بالمشروع، الجهة، اللوحة، IMEI، الموقع...':'Search project, owner, plate, IMEI, location...','لا توجد مشاريع. أنشئ مشروعًا جديدًا.':'No projects yet. Create a new project.','العودة إلى المشاريع':'Back to projects','تعديل المشروع':'Edit project','مركبات المشروع':'Project Vehicles','تصدير Excel':'Export Excel',
+'عدد المركبات':'Vehicles','تم التنفيذ':'Completed','التقدم':'Progress','الاستحقاق':'Due','رقم اللوحة *':'Plate number *','رقم اللوحة':'Plate number','الموقع':'Location','ملاحظة':'Note','اختياري':'Optional','إضافة مركبة':'Add vehicle','حفظ التعديل':'Save changes','إضافة عدة مركبات دفعة واحدة':'Bulk add vehicles','إضافة الكل':'Add all',
+'بحث باللوحة، IMEI، الموقع، أو الملاحظة...':'Search plate, IMEI, location, or note...','لا توجد مركبات بعد. أضف أول مركبة.':'No vehicles yet. Add the first vehicle.','لا توجد مركبات مطابقة للبحث':'No vehicles match your search','أ ب ت 1234':'ABC 1234','نعم':'Yes','لا':'No','المركبات':'Vehicles',
+'اسم المشروع *':'Project name *','الجهة / المالك':'Owner / entity','المورد / الفريق':'Vendor / team','الفرع / الموقع':'Branch / location','وصف / ملاحظات':'Description / notes','حفظ المشروع':'Save project','مثال: إزالة أجهزة التتبع من المركبات المباعة':'e.g. Remove tracking devices from sold vehicles','Yelo / عميل / شركة':'Yelo / client / company',
+'المركبات (اختياري) — كل مركبة في سطر: اللوحة، IMEI، الموقع، ملاحظة':'Vehicles (optional) - one per line: Plate, IMEI, Location, Note',
+'أ ب ت 1234, 867747076314283, ساحة الرياض, تم تركيب الجهاز\nر ص ح 5431, 867747076314284, فرع جدة, بانتظار التركيب':'ABC 1234, 867747076314283, Riyadh Yard, Device installed\nXYZ 5431, 867747076314284, Jeddah Branch, Pending installation',
+'مركز التحكم بالعمليات — تُحفظ البيانات على Supabase':'Operations Control Center - data is stored on Supabase',
+'تم تحديث أمر العمل بنجاح':'Work order updated','تمت إضافة أمر العمل بنجاح':'Work order added','تم حذف أمر العمل':'Work order deleted','تم تصدير أوامر العمل':'Work orders exported','تم تحديث بيانات الاتصال':'Connectivity data updated','الملف فارغ أو غير صالح':'File is empty or invalid','فشل استيراد الملف':'Import failed','رقم اللوحة مطلوب':'Plate number is required','رقم اللوحة موجود مسبقًا في هذا المشروع':'This plate number already exists in this project','تم تحديث المركبة':'Vehicle updated','تمت إضافة المركبة':'Vehicle added','لا توجد لوحات صالحة':'No valid plates found','تعذر تحميل مكتبة Excel':'Could not load the Excel library','تم تحديث المشروع':'Project updated','تم إنشاء المشروع':'Project created','تم حذف المشروع':'Project deleted','اسم المشروع مطلوب':'Project name is required','التاريخ مطلوب':'Date is required','وصف العمل مطلوب':'Work description is required','المسؤول مطلوب':'Responsible person is required','الكمية المطلوبة يجب أن تكون أكبر من صفر':'Requested quantity must be greater than zero'};
+const PAT=[[/^من إجمالي ([\d,]+) مركبة$/,n=>`of ${n} vehicles`],[/^نسبة الانقطاع (.+)$/,n=>`Outage rate ${n}`],[/^(.+) إجمالي الكمية المطلوبة$/,n=>`${n} total requested quantity`],[/^(\d+)% من الأوامر$/,n=>`${n}% of orders`],[/^متبقي (.+) وحدة$/,n=>`${n} units remaining`],[/^(.+) وحدة$/,n=>`${n} units`],[/^([\d,]+) مركبة$/,n=>`${n} vehicles`],
+[/^AFAQY يتفوق بمقدار (.+) نقطة مئوية على RENTY\.$/,n=>`AFAQY leads RENTY by ${n} percentage points.`],[/^RENTY يتفوق بمقدار (.+) نقطة مئوية على AFAQY\.$/,n=>`RENTY leads AFAQY by ${n} percentage points.`],[/^([\d.]+) نقطة$/,n=>`${n} pts`],
+[/^تم استيراد (\d+) سجل(?: \(تجاهل (\d+)\))?$/,(a,b)=>`Imported ${a} records`+(b?` (${b} skipped)`:'')],[/^تمت إضافة (\d+) مركبة(?: \(تجاهل (\d+) مكررة\))?$/,(a,b)=>`Added ${a} vehicles`+(b?` (${b} duplicates skipped)`:'')],[/^حذف المركبة (.+)؟$/,n=>`Delete vehicle ${n}?`],[/^حذف المشروع (.+) وجميع مركباته؟$/,n=>`Delete project ${n} and all its vehicles?`]];
+function tr(s){const m=/^([^\p{L}\p{N}]*)([\s\S]*?)(\s*)$/u.exec(s),c=m[2];if(!/[\u0600-\u06FF]/.test(c))return s;let r=EN[c];if(r===undefined)for(const[re,f]of PAT){const x=c.match(re);if(x){r=f(...x.slice(1));break;}}return r===undefined?s:m[1]+r+m[3];}
+const t=s=>lang==='en'?tr(s):s;
+const BULK_PH='أ ب ت 1234, 867747076314283, ساحة الرياض, تم تركيب الجهاز\nر ص ح 5431, 867747076314284, فرع جدة, بانتظار التركيب';
+const nodeOrig=new WeakMap();
+function i18nAll(){
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+  while(n=w.nextNode()){const pn=n.parentNode.nodeName;if(pn==='SCRIPT'||pn==='STYLE')continue;const cur=n.nodeValue;let o=nodeOrig.get(n);if(o===undefined||(o!==cur&&tr(o)!==cur)){o=cur;nodeOrig.set(n,o);}const want=lang==='en'?tr(o):o;if(want!==cur)n.nodeValue=want;}
+  document.querySelectorAll('[placeholder],[title]').forEach(el=>{el.__o=el.__o||{};['placeholder','title'].forEach(a=>{if(!el.hasAttribute(a))return;const cur=el.getAttribute(a);let o=el.__o[a];if(o===undefined||(o!==cur&&tr(o)!==cur)){o=cur;el.__o[a]=o;}const want=lang==='en'?tr(o):o;if(want!==cur)el.setAttribute(a,want);});});
+}
+const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function chartDefaults(){Chart.defaults.color=cv('--text-dim');Chart.defaults.font={family:"'IBM Plex Sans Arabic',sans-serif"};Chart.defaults.borderColor=cv('--border');}
+function fill(id,map,all){const el=$(id),v=el.value;el.innerHTML=(all?'<option value="">الكل</option>':'')+(Array.isArray(map)?map:Object.entries(map)).map(([k,l])=>`<option value="${k}">${l}</option>`).join('');el.value=v;}
+function fillSelects(){fill('fPriority',PRIORITY_LABELS,1);fill('fStatus',STATUS_LABELS,1);fill('fmPriority',PRIORITY_LABELS);fill('fmDept',DEPT_LABELS);fill('fmStatus',[['auto','تلقائي'],['Cancelled','ملغي']]);}
+function markSegs(){document.querySelectorAll('#langSeg button').forEach(b=>{const a=b.dataset.lang===lang;b.classList.toggle('active',a);b.setAttribute('aria-pressed',a);});document.querySelectorAll('#themeSeg button').forEach(b=>{const a=b.dataset.themeV===theme;b.classList.toggle('active',a);b.setAttribute('aria-pressed',a);});}
+function applyTheme(th,init){theme=th;localStorage.setItem('occ_theme',th);document.documentElement.setAttribute('data-theme',th);markSegs();if(!init)renderAll();}
+function setLang(l){lang=l;localStorage.setItem('occ_lang',l);const h=document.documentElement;h.lang=l;h.dir=l==='ar'?'rtl':'ltr';document.title=l==='ar'?'مركز التحكم بالعمليات | Operations Control Center':'Operations Control Center';fillSelects();markSegs();renderAll();i18nAll();}
+function initUi(){
+  document.querySelectorAll('option:not([value])').forEach(o=>o.setAttribute('value',o.textContent));
+  $('vBulk').setAttribute('placeholder',BULK_PH);$('pVehicles').setAttribute('placeholder',BULK_PH);
+  $('crumbBack').onclick=closeProject;
+  document.querySelectorAll('#langSeg button').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+  document.querySelectorAll('#themeSeg button').forEach(b=>b.onclick=()=>applyTheme(b.dataset.themeV));
+  let raf;new MutationObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(i18nAll);}).observe(document.body,{childList:true,subtree:true,characterData:true});
+  applyTheme(theme,true);setLang(lang);
+}
+const uid=p=>p+'_'+Math.random().toString(36).slice(2,10);
+const fmtNum=n=>Number(n||0).toLocaleString('en-US');
+const fmtPct=n=>(Number.isFinite(n)?n.toFixed(1):'0.0')+'%';
+const todayISO=()=>new Date().toISOString().slice(0,10);
+function fmtDate(d){if(!d)return'—';const x=new Date(d+'T00:00:00');return isNaN(x)?d:x.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showToast(m,t){const e=$('toast');e.textContent=m;e.className='toast show '+(t||'');clearTimeout(showToast.t);showToast.t=setTimeout(()=>e.classList.remove('show'),2800);}
+
+/* ---------- Storage (+ migration from older versions) ---------- */
+function loadData(){
+  let d=null;try{d=JSON.parse(localStorage.getItem(STORAGE_KEY));}catch(e){}
+  if(!d)d={};
+  d.connectivity=d.connectivity||{afaqy:{connected:8726,disconnected:2894},renty:{connected:7002,disconnected:1593}};
+  d.workOrders=Array.isArray(d.workOrders)?d.workOrders:[];
+  if(!Array.isArray(d.prj)){
+    d.prj=[];
+    if(Array.isArray(d.projectGroups)){
+      d.prj=d.projectGroups.map(g=>({id:g.id,reference:g.reference,title:g.title,ownerEntity:g.ownerEntity||'',vendor:g.vendor||'',branch:g.branch||'',manager:g.manager||'',priority:g.priority||'متوسطة',status:g.status||'جديد',dueDate:'',notes:g.description||'',createdAt:g.createdAt,updatedAt:g.updatedAt,
+        vehicles:(d.requests||[]).filter(r=>r.projectId===g.id).flatMap(r=>(r.plates||[]).map((p,i)=>({id:uid('v'),plate:p,imei:(r.devices||[])[i]||'',note:r.type||'',done:r.status==='مكتمل'})))}));
+    }
+  }
+  d.prj.forEach(p=>{p.vehicles=Array.isArray(p.vehicles)?p.vehicles:[];p.vehicles.forEach(v=>{if(!v.id)v.id=uid('v');if(v.location===undefined)v.location='';if(v.imei===undefined)v.imei='';if(v.note===undefined)v.note='';});});
+  delete d.fleet;delete d.projects;delete d.projectGroups;delete d.requests;delete d.projectSeq;
+  return d;
+}
+let appData=loadData();
+/* ---------- Supabase cloud sync ---------- */
+const SB_URL='https://fbtxgeogxvbpalzzbbya.supabase.co',SB_KEY='sb_publishable_YpmRiJc7jeEUkJ84fLMA8g_44XUY8Ul';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+let cloudReady=false,syncT=null;
+const nz=v=>(v===''||v===undefined)?null:v,ez=v=>v==null?'':v;
+function setSync(st,msg){const b=$('syncBadge');b.style.display='flex';$('syncTxt').textContent=st==='ok'?'☁️ تم الحفظ':st==='err'?'⚠️ فشل الحفظ: '+(msg||''):'⏳ جارٍ الحفظ...';}
+async function fetchAll(t){let out=[],f=0;for(;;){const{data,error}=await sb.from(t).select('*').range(f,f+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;f+=1000;}return out;}
+async function pull(){
+  const[wo,pr,ve,cn]=await Promise.all(['work_orders','projects','project_vehicles','connectivity'].map(fetchAll));
+  const vm={};ve.forEach(v=>{(vm[v.project_id]=vm[v.project_id]||[]).push({id:v.id,plate:ez(v.plate),imei:ez(v.imei),note:ez(v.note),location:ez(v.location),done:!!v.done});});
+  const c=cn[0]||{afaqy_connected:8726,afaqy_disconnected:2894,renty_connected:7002,renty_disconnected:1593};
+  return{connectivity:{afaqy:{connected:c.afaqy_connected,disconnected:c.afaqy_disconnected},renty:{connected:c.renty_connected,disconnected:c.renty_disconnected}},
+    workOrders:wo.map(r=>({id:r.id,date:ez(r.date),workType:ez(r.work_type),description:ez(r.description),department:ez(r.department),priority:ez(r.priority),requestedQuantity:Number(r.requested_quantity),completedQuantity:Number(r.completed_quantity),remainingQuantity:Number(r.remaining_quantity),dueDate:ez(r.due_date),owner:ez(r.owner),status:ez(r.status),notes:ez(r.notes),createdAt:ez(r.created_at),updatedAt:ez(r.updated_at)})),
+    prj:pr.map(r=>({id:r.id,reference:ez(r.reference),title:ez(r.title),ownerEntity:ez(r.owner_entity),vendor:ez(r.vendor),branch:ez(r.branch),manager:ez(r.manager),priority:ez(r.priority),status:ez(r.status),dueDate:ez(r.due_date),notes:ez(r.notes),createdAt:ez(r.created_at),updatedAt:ez(r.updated_at),vehicles:vm[r.id]||[]}))};
+}
+async function push(){
+  const d=appData,c=d.connectivity;
+  const wo=d.workOrders.filter(o=>o.id).map(o=>({id:o.id,date:nz(o.date),work_type:o.workType,description:o.description,department:o.department,priority:o.priority,requested_quantity:+o.requestedQuantity||0,completed_quantity:+o.completedQuantity||0,remaining_quantity:+o.remainingQuantity||0,due_date:nz(o.dueDate),owner:o.owner,status:o.status,notes:o.notes,created_at:nz(o.createdAt),updated_at:nz(o.updatedAt)}));
+  const pr=d.prj.map(p=>({id:p.id,reference:p.reference,title:p.title,owner_entity:p.ownerEntity,vendor:p.vendor,branch:p.branch,manager:p.manager,priority:p.priority,status:p.status,due_date:nz(p.dueDate),notes:p.notes,created_at:nz(p.createdAt),updated_at:nz(p.updatedAt)}));
+  const ve=d.prj.flatMap(p=>p.vehicles.map(v=>({id:v.id,project_id:p.id,plate:v.plate,imei:v.imei,note:v.note,location:v.location,done:!!v.done})));
+  const up=async(t,rows)=>{for(let i=0;i<rows.length;i+=500){const{error}=await sb.from(t).upsert(rows.slice(i,i+500));if(error)throw error;}};
+  const prune=async(t,rows)=>{const keep=new Set(rows.map(r=>r.id));const del=(await fetchAll(t)).map(r=>r.id).filter(id=>!keep.has(id));for(let i=0;i<del.length;i+=100){const{error}=await sb.from(t).delete().in('id',del.slice(i,i+100));if(error)throw error;}};
+  await up('projects',pr);await up('project_vehicles',ve);await up('work_orders',wo);
+  const{error}=await sb.from('connectivity').upsert({id:1,afaqy_connected:c.afaqy.connected,afaqy_disconnected:c.afaqy.disconnected,renty_connected:c.renty.connected,renty_disconnected:c.renty.disconnected});if(error)throw error;
+  await prune('project_vehicles',ve);await prune('projects',pr);await prune('work_orders',wo);
+}
+const saveData=()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(appData));
+  if(!cloudReady)return;clearTimeout(syncT);setSync('wait');
+  syncT=setTimeout(async()=>{try{await push();setSync('ok');}catch(e){console.error(e);setSync('err',e.message);}},800);};
+async function enterApp(){
+  $('loginOv').style.display='none';
+  try{
+    const cloud=await pull();
+    const cloudEmpty=!cloud.workOrders.length&&!cloud.prj.length,hasLocal=appData.workOrders.length||appData.prj.length;
+    if(cloudEmpty&&hasLocal&&confirm('قاعدة البيانات السحابية فارغة.\nهل تريد رفع البيانات الموجودة في هذا المتصفح إليها؟')){cloudReady=true;setSync('wait');await push();setSync('ok');}
+    else{appData=cloud;cloudReady=true;localStorage.setItem(STORAGE_KEY,JSON.stringify(appData));setSync('ok');}
+    renderAll();
+  }catch(e){console.error(e);alert('تعذر الاتصال بقاعدة البيانات: '+(e.message||e)+'\nتأكد من تنفيذ كود SQL.');}
+}
+async function bootAuth(){
+  $('lgBtn').onclick=async()=>{$('lgErr').textContent='';const{error}=await sb.auth.signInWithPassword({email:$('lgEmail').value.trim(),password:$('lgPass').value});if(error){$('lgErr').textContent='بيانات الدخول غير صحيحة';return;}enterApp();};
+  $('lgPass').onkeydown=e=>{if(e.key==='Enter')$('lgBtn').click();};
+  $('logoutLnk').onclick=async e=>{e.preventDefault();await sb.auth.signOut();localStorage.removeItem(STORAGE_KEY);location.reload();};
+  const{data:{session}}=await sb.auth.getSession();
+  if(session)enterApp();else $('loginOv').style.display='flex';
+}
+
+/* ---------- Work order logic ---------- */
+function computeStatus(o){
+  if(o.status==='Cancelled')return'Cancelled';
+  const req=+o.requestedQuantity||0,done=+o.completedQuantity||0;
+  if(done>=req&&req>0)return'Completed';
+  if(o.dueDate&&o.dueDate<todayISO()&&done<req)return'Overdue';
+  return'In Progress';
+}
+const filters={dateFrom:'',dateTo:'',workType:'',department:'',priority:'',status:'',search:''};
+function applyFilters(){return appData.workOrders.filter(o=>{
+  if(filters.dateFrom&&o.date<filters.dateFrom)return false;if(filters.dateTo&&o.date>filters.dateTo)return false;
+  if(filters.workType&&o.workType!==filters.workType)return false;if(filters.department&&o.department!==filters.department)return false;
+  if(filters.priority&&o.priority!==filters.priority)return false;if(filters.status&&o.status!==filters.status)return false;
+  if(filters.search){const h=(o.description+' '+o.department+' '+o.owner+' '+o.workType+' '+(WORK_TYPE_LABELS[o.workType]||'')+' '+(DEPT_LABELS[o.department]||'')).toLowerCase();if(!h.includes(filters.search.toLowerCase()))return false;}
+  return true;});}
+
+/* ---------- Connectivity ---------- */
+function renderConnectivity(){
+  const c=appData.connectivity,aT=c.afaqy.connected+c.afaqy.disconnected,rT=c.renty.connected+c.renty.disconnected;
+  const aR=aT?c.afaqy.connected/aT*100:0,rR=rT?c.renty.connected/rT*100:0;
+  const card=(l,v,s,cls,pct,ic)=>`<div class="card"><div class="kpi-top"><div class="kpi-label">${l}</div><div class="kpi-icon ${cls}">${ic}</div></div><div class="kpi-value">${fmtNum(v)}</div><div class="kpi-sub">${s}</div>${pct!==null?`<div class="progress-track"><div class="progress-fill fill-green" style="width:${pct}%"></div></div>`:''}</div>`;
+  $('connectivityCards').innerHTML=`<div class="vendor-heading"><span>AFAQY</span><div class="line"></div></div>`+card('المركبات المتصلة',c.afaqy.connected,`من إجمالي ${fmtNum(aT)} مركبة`,'icon-green',aR.toFixed(1),'📡')+card('المركبات غير المتصلة',c.afaqy.disconnected,`نسبة الانقطاع ${fmtPct(100-aR)}`,'icon-red',null,'⚠️')
+   +`<div class="vendor-heading"><span>RENTY</span><div class="line"></div></div>`+card('المركبات المتصلة',c.renty.connected,`من إجمالي ${fmtNum(rT)} مركبة`,'icon-green',rR.toFixed(1),'📡')+card('المركبات غير المتصلة',c.renty.disconnected,`نسبة الانقطاع ${fmtPct(100-rR)}`,'icon-red',null,'⚠️');
+  $('cmpTable').querySelector('tbody').innerHTML=`<tr><td>إجمالي المركبات</td><td class="num">${fmtNum(aT)}</td><td class="num">${fmtNum(rT)}</td></tr><tr><td>المتصلة</td><td class="num" style="color:var(--green)">${fmtNum(c.afaqy.connected)}</td><td class="num" style="color:var(--green)">${fmtNum(c.renty.connected)}</td></tr><tr><td>غير المتصلة</td><td class="num" style="color:var(--red)">${fmtNum(c.afaqy.disconnected)}</td><td class="num" style="color:var(--red)">${fmtNum(c.renty.disconnected)}</td></tr><tr><td>نسبة الاتصال</td><td class="num">${fmtPct(aR)}</td><td class="num">${fmtPct(rR)}</td></tr>`;
+  const diff=aR-rR;$('diffValue').textContent=(diff>=0?'+':'')+diff.toFixed(1)+' نقطة';$('diffValue').style.color=diff>=0?'var(--green)':'var(--red)';
+  $('diffLabel').textContent=Math.abs(diff)<.05?'أداء النظامين متقارب في نسبة الاتصال حاليًا.':diff>0?`AFAQY يتفوق بمقدار ${diff.toFixed(1)} نقطة مئوية على RENTY.`:`RENTY يتفوق بمقدار ${Math.abs(diff).toFixed(1)} نقطة مئوية على AFAQY.`;
+  [['mAfaqyConn',c.afaqy.connected],['mAfaqyDisc',c.afaqy.disconnected],['mRentyConn',c.renty.connected],['mRentyDisc',c.renty.disconnected]].forEach(([id,v])=>{if(document.activeElement!==$(id))$(id).value=v;});
+  return c.afaqy.disconnected+c.renty.disconnected;
+}
+
+/* ---------- KPIs / alerts ---------- */
+function computeKpis(l){
+  const cnt=s=>l.filter(o=>o.status===s).length,sum=f=>l.reduce((s,o)=>s+Number(o[f]||0),0);
+  const totalReq=sum('requestedQuantity'),totalDone=sum('completedQuantity');
+  return{total:l.length,completed:cnt('Completed'),inProgress:cnt('In Progress'),overdue:cnt('Overdue'),cancelled:cnt('Cancelled'),totalReq,totalDone,rate:totalReq?totalDone/totalReq*100:0,remaining:sum('remainingQuantity'),
+    completedToday:l.filter(o=>o.status==='Completed'&&o.updatedAt&&o.updatedAt.slice(0,10)===todayISO()).length};
+}
+function renderKpis(k){
+  const c=[{l:'إجمالي أوامر العمل',v:fmtNum(k.total),s:`${fmtNum(k.totalReq)} إجمالي الكمية المطلوبة`,i:'📋',c:'icon-blue'},{l:'مكتمل',v:fmtNum(k.completed),s:`${k.total?(k.completed/k.total*100).toFixed(0):0}% من الأوامر`,i:'✅',c:'icon-green'},{l:'قيد التنفيذ',v:fmtNum(k.inProgress),s:`متبقي ${fmtNum(k.remaining)} وحدة`,i:'⏳',c:'icon-amber'},{l:'متأخر',v:fmtNum(k.overdue),s:k.overdue?'يتطلب متابعة فورية':'لا يوجد تأخير',i:'🚨',c:'icon-red'},{l:'نسبة الإنجاز',v:fmtPct(k.rate),s:`${fmtNum(k.totalDone)} / ${fmtNum(k.totalReq)} وحدة`,i:'📈',c:k.rate>=80?'icon-green':k.rate>=60?'icon-amber':'icon-red'}];
+  $('workKpis').innerHTML=c.map(x=>`<div class="card"><div class="kpi-top"><div class="kpi-label">${x.l}</div><div class="kpi-icon ${x.c}">${x.i}</div></div><div class="kpi-value">${x.v}</div><div class="kpi-sub">${x.s}</div></div>`).join('');
+}
+function renderAlerts(k,disc){
+  const it=[{i:'🚨',n:k.overdue,t:'أوامر عمل متأخرة',s:k.overdue?'critical':'ok',c:k.overdue?'icon-red':'icon-green'},{i:'📂',n:k.overdue+k.inProgress,t:'أوامر عمل مفتوحة (قيد التنفيذ + متأخر)',s:'info',c:'icon-amber'},{i:'✅',n:k.completedToday,t:'أوامر عمل مكتملة اليوم',s:'ok',c:'icon-green'},{i:'📡',n:disc,t:'مركبات غير متصلة (AFAQY + RENTY)',s:'critical',c:'icon-red'}];
+  $('alertsGrid').innerHTML=it.map(x=>`<div class="card alert-card sev-${x.s}"><div class="alert-icon ${x.c}">${x.i}</div><div><div class="alert-num">${fmtNum(x.n)}</div><div class="alert-txt">${x.t}</div></div></div>`).join('');
+}
+
+/* ---------- Charts ---------- */
+
+function mk(key,id,cfg){if(charts[key])charts[key].destroy();charts[key]=new Chart($(id),cfg);}
+function renderCharts(k,list){
+  chartDefaults();const G=cv('--green'),A=cv('--amber'),R=cv('--red'),B=cv('--blue'),F=cv('--text-faint'),TR=cv('--track'),GR=cv('--border-soft');
+  mk('status','statusChart',{type:'doughnut',data:{labels:['مكتمل','قيد التنفيذ','متأخر','ملغي'].map(t),datasets:[{data:[k.completed,k.inProgress,k.overdue,k.cancelled],backgroundColor:[G,A,R,F],borderWidth:0}]},
+    options:{cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},onClick:(e,el)=>{if(el.length){const s=['Completed','In Progress','Overdue','Cancelled'][el[0].index];filters.status=filters.status===s?'':s;$('fStatus').value=filters.status;renderAll();}}}});
+  const tt={};list.forEach(o=>tt[o.workType]=(tt[o.workType]||0)+Number(o.requestedQuantity||0));
+  const en=Object.entries(tt).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  mk('type','typeChart',{type:'bar',data:{labels:en.map(([x])=>t(WORK_TYPE_LABELS[x]||x)),datasets:[{data:en.map(([,v])=>v),backgroundColor:B,borderRadius:5,maxBarThickness:16}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:GR}},y:{grid:{display:false},ticks:{font:{size:10.5}}}}}});
+  let col=R,lb='حرج';if(k.rate>=80){col=G;lb='ممتاز';}else if(k.rate>=60){col=A;lb='تحذير';}
+  mk('gauge','gaugeChart',{type:'doughnut',data:{datasets:[{data:[k.rate,Math.max(100-k.rate,0)],backgroundColor:[col,TR],borderWidth:0}]},options:{rotation:-90,circumference:180,cutout:'78%',plugins:{legend:{display:false},tooltip:{enabled:false}}}});
+  $('gaugeValue').textContent=k.rate.toFixed(1)+'%';$('gaugeValue').style.color=col;$('gaugeCaption').textContent=lb;
+  const m={};list.forEach(o=>{if(Number(o.completedQuantity)>0)m[o.date]=(m[o.date]||0)+Number(o.completedQuantity);});const ds=Object.keys(m).sort();
+  mk('trend','trendChart',{type:'line',data:{labels:ds.map(fmtDate),datasets:[{data:ds.map(d=>m[d]),borderColor:G,backgroundColor:G+'22',fill:true,tension:.35,pointRadius:3}]},options:{plugins:{legend:{display:false}},scales:{y:{grid:{color:GR}},x:{grid:{display:false}}}}});
+  const bd={};list.forEach(o=>{const x=bd[o.department]=bd[o.department]||{r:0,d:0};x.r+=Number(o.requestedQuantity||0);x.d+=Number(o.completedQuantity||0);});
+  const dv=Object.values(bd).map(v=>v.r?v.d/v.r*100:0);
+  mk('dept','deptChart',{type:'bar',data:{labels:Object.keys(bd).map(d=>t(DEPT_LABELS[d]||d)),datasets:[{data:dv,backgroundColor:dv.map(v=>v>=80?G:v>=60?A:R),borderRadius:5,maxBarThickness:26}]},options:{plugins:{legend:{display:false}},scales:{y:{max:100,grid:{color:GR},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}});
+}
+
+/* ---------- Work order table ---------- */
+function renderTable(list){
+  $('emptyState').style.display=list.length?'none':'block';
+  $('tableBody').innerHTML=[...list].sort((a,b)=>b.date.localeCompare(a.date)).map(o=>{
+    const req=+o.requestedQuantity||0,done=+o.completedQuantity||0,pct=req?Math.min(done/req*100,100):0;
+    const fc=pct>=100?'fill-green':pct>=50?'fill-blue':'fill-amber';
+    const st={'Completed':'tag-green','In Progress':'tag-blue','Overdue':'tag-red','Cancelled':'tag-amber'}[o.status]||'tag-blue';
+    const pr={'Low':'tag-blue','Medium':'tag-amber','High':'tag-red','Critical':'tag-red'}[o.priority]||'tag-blue';
+    return`<tr><td>${fmtDate(o.date)}</td><td>${WORK_TYPE_LABELS[o.workType]||o.workType}</td><td class="desc-cell" title="${esc(o.description)}">${esc(o.description)}</td><td>${DEPT_LABELS[o.department]||o.department}</td><td><span class="tag ${pr}">${PRIORITY_LABELS[o.priority]||o.priority}</span></td><td class="qty-txt">${fmtNum(req)}</td><td class="qty-txt">${fmtNum(done)}</td><td class="qty-txt">${fmtNum(Math.max(req-done,0))}</td><td><div class="mini-progress"><div class="mini-progress-fill ${fc}" style="width:${pct}%"></div></div><div class="qty-txt">${fmtNum(done)} / ${fmtNum(req)} (${pct.toFixed(0)}%)</div></td><td><span class="tag ${st}">${STATUS_LABELS[o.status]||o.status}</span></td><td>${esc(o.owner)}</td><td><div class="row-actions"><button class="act-btn" title="تعديل" onclick="openEditModal('${o.id}')">✏️</button><button class="act-btn del" title="حذف" onclick="openDeleteModal('${o.id}')">🗑️</button></div></td></tr>`;}).join('');
+}
+function populateFilterOptions(){
+  const t=$('fWorkType'),d=$('fDept'),ct=t.value,cd=d.value;
+  t.innerHTML='<option value="">الكل</option>'+Object.entries(WORK_TYPE_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+  d.innerHTML='<option value="">الكل</option>'+[...new Set(appData.workOrders.map(o=>o.department))].map(x=>`<option value="${x}">${DEPT_LABELS[x]||x}</option>`).join('');
+  t.value=ct;d.value=cd;
+  if(!$('fmWorkType').options.length)$('fmWorkType').innerHTML=Object.entries(WORK_TYPE_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+}
+function safe(fn,l){try{fn();}catch(e){console.error(l,e);}}
+function renderAll(){
+  let disc=0;safe(()=>{disc=renderConnectivity();},'conn');
+  const list=applyFilters(),k=computeKpis(list);
+  safe(()=>renderKpis(k),'kpis');
+  if(typeof Chart!=='undefined')safe(()=>renderCharts(k,list),'charts');
+  safe(()=>renderAlerts(k,disc),'alerts');safe(()=>renderTable(list),'table');safe(populateFilterOptions,'opts');safe(renderProjects,'projects');
+  $('lastUpdated').textContent=new Date().toLocaleString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+/* ---------- Work order CRUD ---------- */
+function updateRemaining(){const r=+$('fmReqQty').value||0;let d=+$('fmDoneQty').value||0;if(d>r){d=r;$('fmDoneQty').value=r;}$('fmRemaining').value=fmtNum(Math.max(r-d,0));}
+function openAddModal(){$('modalTitle').textContent='إضافة أمر عمل جديد';$('workForm').reset();$('workId').value='';$('fmDate').value=todayISO();$('fmDoneQty').value=0;$('formErr').style.display='none';updateRemaining();$('modalBackdrop').classList.add('open');}
+function openEditModal(id){const o=appData.workOrders.find(x=>x.id===id);if(!o)return;$('modalTitle').textContent='تعديل أمر العمل';
+  $('workId').value=o.id;$('fmDate').value=o.date;$('fmWorkType').value=o.workType;$('fmDesc').value=o.description;$('fmDept').value=o.department;$('fmPriority').value=o.priority;$('fmReqQty').value=o.requestedQuantity;$('fmDoneQty').value=o.completedQuantity;$('fmDueDate').value=o.dueDate||'';$('fmOwner').value=o.owner;$('fmStatus').value=o.status==='Cancelled'?'Cancelled':'auto';$('fmNotes').value=o.notes||'';
+  $('formErr').style.display='none';updateRemaining();$('modalBackdrop').classList.add('open');}
+const closeModal=()=>$('modalBackdrop').classList.remove('open');
+function saveWorkOrder(){
+  const date=$('fmDate').value,description=$('fmDesc').value.trim(),owner=$('fmOwner').value.trim(),req=+$('fmReqQty').value;let done=+$('fmDoneQty').value||0;
+  const errs=[];if(!date)errs.push('التاريخ مطلوب');if(!description)errs.push('وصف العمل مطلوب');if(!owner)errs.push('المسؤول مطلوب');if(!req||req<=0)errs.push('الكمية المطلوبة يجب أن تكون أكبر من صفر');
+  if(errs.length){$('formErr').textContent=errs.map(t).join(' • ');$('formErr').style.display='block';return;}
+  if(done>req)done=req;const now=new Date().toISOString(),id=$('workId').value;
+  const base={date,workType:$('fmWorkType').value,description,department:$('fmDept').value,priority:$('fmPriority').value,requestedQuantity:req,completedQuantity:done,remainingQuantity:Math.max(req-done,0),dueDate:$('fmDueDate').value,owner,notes:$('fmNotes').value.trim(),updatedAt:now};
+  const cancelled=$('fmStatus').value==='Cancelled';
+  if(id){const i=appData.workOrders.findIndex(o=>o.id===id);if(i>-1){const u={...appData.workOrders[i],...base};u.status=cancelled?'Cancelled':computeStatus({...u,status:''});appData.workOrders[i]=u;}showToast('تم تحديث أمر العمل بنجاح','ok');}
+  else{const o={id:uid('wo'),...base,status:'',createdAt:now};o.status=cancelled?'Cancelled':computeStatus(o);appData.workOrders.push(o);showToast('تمت إضافة أمر العمل بنجاح','ok');}
+  saveData();closeModal();renderAll();
+}
+function openDeleteModal(id){pendingDeleteId=id;$('deleteBackdrop').classList.add('open');}
+function closeDeleteModal(){pendingDeleteId=null;$('deleteBackdrop').classList.remove('open');}
+
+/* ---------- CSV ---------- */
+const CSV_HEADERS=['id','date','workType','description','department','priority','requestedQuantity','completedQuantity','remainingQuantity','dueDate','owner','status','notes','createdAt','updatedAt'];
+const csvEsc=v=>{const s=String(v==null?'':v);return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+function dl(content,name){const b=new Blob(["\uFEFF"+content],{type:'text/csv;charset=utf-8;'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();}
+function exportCsv(){dl([CSV_HEADERS.join(','),...appData.workOrders.map(o=>CSV_HEADERS.map(h=>csvEsc(o[h])).join(','))].join('\n'),`work_orders_${todayISO()}.csv`);showToast('تم تصدير أوامر العمل','ok');}
+function csvTemplate(){const s={date:todayISO(),workType:'Tracking Device Installation',description:'مثال: وصف العمل',department:'Fleet',priority:'Medium',requestedQuantity:10,completedQuantity:0,remainingQuantity:10,owner:'اسم المسؤول'};dl([CSV_HEADERS.join(','),CSV_HEADERS.map(h=>csvEsc(s[h])).join(',')].join('\n'),'work_orders_template.csv');}
+function parseCsv(t){const rows=[];let r=[],f='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}else if(c==='"')q=true;else if(c===','){r.push(f);f='';}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;r.push(f);f='';if(r.length>1||r[0]!=='')rows.push(r);r=[];}else f+=c;}if(f.length||r.length){r.push(f);rows.push(r);}return rows;}
+function importCsv(file){const rd=new FileReader();rd.onload=e=>{try{const rows=parseCsv(e.target.result.replace(/^\uFEFF/,''));if(rows.length<2){showToast('الملف فارغ أو غير صالح','bad');return;}
+  const H=rows[0].map(h=>h.trim());let ok=0,skip=0;
+  rows.slice(1).forEach(r=>{const o={};H.forEach((h,i)=>o[h]=(r[i]||'').trim());if(!o.date||!o.workType||!o.description||!o.owner||!o.requestedQuantity){skip++;return;}
+    const req=+o.requestedQuantity||0;let d=Math.min(+o.completedQuantity||0,req);const now=new Date().toISOString();
+    const n={id:o.id||uid('wo'),date:o.date,workType:WORK_TYPE_LABELS[o.workType]?o.workType:'Other',description:o.description,department:DEPT_LABELS[o.department]?o.department:'Other',priority:['Low','Medium','High','Critical'].includes(o.priority)?o.priority:'Medium',requestedQuantity:req,completedQuantity:d,remainingQuantity:Math.max(req-d,0),dueDate:o.dueDate||'',owner:o.owner,notes:o.notes||'',createdAt:o.createdAt||now,updatedAt:now,status:''};
+    n.status=o.status==='Cancelled'?'Cancelled':computeStatus(n);const i=appData.workOrders.findIndex(x=>x.id===n.id);if(i>-1)appData.workOrders[i]=n;else appData.workOrders.push(n);ok++;});
+  saveData();renderAll();showToast(`تم استيراد ${ok} سجل${skip?' (تجاهل '+skip+')':''}`,ok?'ok':'bad');}catch(err){showToast('فشل استيراد الملف','bad');}};rd.readAsText(file,'UTF-8');}
+
+/* =========================================================
+   PROJECTS  (one project → many vehicles with plate numbers)
+   ========================================================= */
+const ptag=v=>v==='مكتمل'?'tag-green':v==='ملغي'?'tag-red':(v==='قيد التنفيذ'||v==='بانتظار المورد')?'tag-amber':(v==='حرجة'||v==='عالية')?'tag-red':'tag-blue';
+const normPlate=v=>String(v||'').replace(/\s+/g,' ').trim();
+const prog=p=>p.vehicles.length?Math.round(p.vehicles.filter(v=>v.done).length/p.vehicles.length*100):0;
+function parseVehicles(text){return String(text||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const c=(l.includes('\t')?l.split('\t'):l.split(/[,،]/)).map(x=>x.trim());return{id:uid('v'),plate:normPlate(c[0]),imei:c[1]||'',location:c[2]||'',note:c.slice(3).join(', '),done:false};}).filter(v=>v.plate);}
+function addVehicles(p,list){let added=0,dup=0;list.forEach(v=>{if(p.vehicles.some(x=>x.plate===v.plate)){dup++;return;}p.vehicles.push(v);added++;});p.updatedAt=new Date().toISOString();return{added,dup};}
+
+function renderProjects(){
+  if($('projectDetailPage').style.display!=='none'){renderDetail();return;}
+  const all=appData.prj,active=all.filter(p=>['جديد','قيد التنفيذ','بانتظار المورد'].includes(p.status)).length;
+  $('projectStats').innerHTML=[['إجمالي المشاريع',all.length,''],['مشاريع مفتوحة',active,'var(--blue)'],['مشاريع مكتملة',all.filter(p=>p.status==='مكتمل').length,'var(--green)'],['إجمالي المركبات',all.reduce((s,p)=>s+p.vehicles.length,0),'var(--amber)']].map(([l,v,c])=>`<div class="project-stat"><div class="ps-label">${l}</div><div class="ps-value" style="color:${c}">${fmtNum(v)}</div></div>`).join('');
+  const q=pFilters.search.toLowerCase();
+  const list=all.filter(p=>(!pFilters.status||p.status===pFilters.status)&&(!q||[p.reference,p.title,p.ownerEntity,p.vendor,p.branch,p.manager,p.notes,...p.vehicles.map(v=>v.plate+' '+v.imei+' '+v.location+' '+v.note)].join(' ').toLowerCase().includes(q))).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  $('projectsEmpty').style.display=list.length?'none':'block';
+  $('projectCards').innerHTML=list.map(p=>{const pc=prog(p);return`<div class="project-card" onclick="openProject('${p.id}')"><div class="project-card-top"><div><div class="project-card-ref">${esc(p.reference)}</div><h3>${esc(p.title)}</h3></div><span class="tag ${ptag(p.status)}">${esc(p.status)}</span></div><div class="project-card-sub">${esc([p.ownerEntity,p.vendor,p.branch].filter(Boolean).join(' · '))}</div><div class="progress-track"><div class="progress-fill fill-green" style="width:${pc}%"></div></div><div class="project-card-bottom" style="margin-top:8px"><span>🚗 ${p.vehicles.length} مركبة</span><span>${p.vehicles.filter(v=>v.done).length}/${p.vehicles.length} · ${pc}%</span></div></div>`;}).join('');
+}
+function openProject(id){curPid=id;$('projectsPage').style.display='none';$('projectDetailPage').style.display='block';$('vSearch').value='';resetVehForm();renderDetail();$('projectWorkspace').scrollIntoView({behavior:'smooth'});}
+function closeProject(){curPid='';$('projectDetailPage').style.display='none';$('projectsPage').style.display='block';renderProjects();}
+const curP=()=>appData.prj.find(p=>p.id===curPid);
+function renderDetail(){
+  const p=curP();if(!p){closeProject();return;}
+  $('dRef').textContent=p.reference;$('dTitle').textContent=p.title;$('dMeta').textContent=[p.ownerEntity,p.vendor,p.branch].filter(Boolean).join(' · ')||'—';$('dStatus').innerHTML=`<span class="tag ${ptag(p.status)}">${esc(p.status)}</span>`;
+  const done=p.vehicles.filter(v=>v.done).length;
+  $('dSummary').innerHTML=[['عدد المركبات',p.vehicles.length],['تم التنفيذ',done],['التقدم',prog(p)+'%'],['المسؤول',p.manager||'—'],['الاستحقاق',p.dueDate?fmtDate(p.dueDate):'—']].map(([l,v],i)=>`<div class="summary-item${i<3?' big':''}"><div class="summary-label">${l}</div><div class="summary-value">${esc(v)}</div></div>`).join('');
+  const q=$('vSearch').value.trim().toLowerCase();
+  const list=p.vehicles.filter(v=>!q||(v.plate+' '+v.imei+' '+v.location+' '+v.note).toLowerCase().includes(q));
+  $('vEmpty').style.display=list.length?'none':'block';$('vEmptyMsg').textContent=p.vehicles.length?'لا توجد مركبات مطابقة للبحث':'لا توجد مركبات بعد. أضف أول مركبة.';$('dProg').style.width=prog(p)+'%';
+  $('vBody').innerHTML=list.map((v,i)=>`<tr class="${v.done?'done-row':''}"><td class="qty-txt">${i+1}</td><td><span class="plate">${esc(v.plate)}</span></td><td><span class="imei">${esc(v.imei||'—')}</span></td><td>${esc(v.location||'—')}</td><td>${esc(v.note||'—')}</td><td><input type="checkbox" ${v.done?'checked':''} onchange="toggleVeh('${v.id}')"></td><td><div class="row-actions"><button class="act-btn" title="تعديل" onclick="editVeh('${v.id}')">✏️</button><button class="act-btn del" title="حذف" onclick="delVeh('${v.id}')">🗑️</button></div></td></tr>`).join('');
+}
+function resetVehForm(){['vEditId','vPlate','vImei','vLoc','vNote'].forEach(i=>$(i).value='');$('vSaveBtn').textContent='➕ إضافة مركبة';$('vCancelBtn').style.display='none';}
+function saveVeh(){
+  const p=curP();if(!p)return;const plate=normPlate($('vPlate').value);if(!plate){showToast('رقم اللوحة مطلوب','bad');return;}
+  const id=$('vEditId').value;
+  if(p.vehicles.some(v=>v.plate===plate&&v.id!==id)){showToast('رقم اللوحة موجود مسبقًا في هذا المشروع','bad');return;}
+  if(id){const v=p.vehicles.find(x=>x.id===id);if(v){v.plate=plate;v.imei=$('vImei').value.trim();v.location=$('vLoc').value.trim();v.note=$('vNote').value.trim();}showToast('تم تحديث المركبة','ok');}
+  else{p.vehicles.push({id:uid('v'),plate,imei:$('vImei').value.trim(),location:$('vLoc').value.trim(),note:$('vNote').value.trim(),done:false});showToast('تمت إضافة المركبة','ok');}
+  p.updatedAt=new Date().toISOString();saveData();resetVehForm();renderDetail();$('vPlate').focus();
+}
+function editVeh(id){const v=curP().vehicles.find(x=>x.id===id);if(!v)return;$('vEditId').value=v.id;$('vPlate').value=v.plate;$('vImei').value=v.imei||'';$('vLoc').value=v.location||'';$('vNote').value=v.note||'';$('vSaveBtn').textContent='💾 حفظ التعديل';$('vCancelBtn').style.display='';$('vPlate').focus();}
+function delVeh(id){const p=curP(),v=p.vehicles.find(x=>x.id===id);if(!v||!confirm(t('حذف المركبة '+v.plate+'؟')))return;p.vehicles=p.vehicles.filter(x=>x.id!==id);saveData();renderDetail();}
+function toggleVeh(id){const p=curP(),v=p.vehicles.find(x=>x.id===id);if(v){v.done=!v.done;p.updatedAt=new Date().toISOString();saveData();renderDetail();}}
+function bulkAdd(){const p=curP(),list=parseVehicles($('vBulk').value);if(!list.length){showToast('لا توجد لوحات صالحة','bad');return;}const r=addVehicles(p,list);saveData();$('vBulk').value='';renderDetail();showToast(`تمت إضافة ${r.added} مركبة${r.dup?' (تجاهل '+r.dup+' مكررة)':''}`,'ok');}
+function exportVeh(){const p=curP();if(!p)return;if(typeof XLSX==='undefined'){showToast('تعذر تحميل مكتبة Excel','bad');return;}
+  const ws=XLSX.utils.json_to_sheet(p.vehicles.map((v,i)=>({'#':i+1,[t('رقم اللوحة')]:v.plate,'IMEI':v.imei,[t('الموقع')]:v.location||'',[t('ملاحظة')]:v.note,[t('تم التنفيذ')]:t(v.done?'نعم':'لا')})));ws['!cols']=[{wch:5},{wch:18},{wch:22},{wch:24},{wch:30},{wch:12}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,t('المركبات'));XLSX.writeFile(wb,`${p.reference}_vehicles_${todayISO()}.xlsx`);}
+
+let editingPid='';
+function openProjectForm(id=''){
+  const p=id?appData.prj.find(x=>x.id===id):null;editingPid=id;
+  $('pTitle').textContent=p?'تعديل المشروع':'مشروع جديد';
+  $('pName').value=p?.title||'';$('pOwner').value=p?.ownerEntity||'';$('pVendor').value=p?.vendor||'';$('pBranch').value=p?.branch||'';$('pManager').value=p?.manager||'';
+  $('pPriority').value=p?.priority||'متوسطة';$('pStatus').value=p?.status||'جديد';$('pDue').value=p?.dueDate||'';$('pNotes').value=p?.notes||'';$('pVehicles').value='';
+  $('pVehWrap').style.display=p?'none':'flex';$('pErr').style.display='none';$('projectBackdrop').classList.add('open');$('pName').focus();
+}
+const closeProjectForm=()=>$('projectBackdrop').classList.remove('open');
+function saveProject(){
+  const title=$('pName').value.trim();if(!title){$('pErr').textContent='اسم المشروع مطلوب';$('pErr').style.display='block';return;}
+  const now=new Date().toISOString();
+  const f={title,ownerEntity:$('pOwner').value.trim(),vendor:$('pVendor').value.trim(),branch:$('pBranch').value.trim(),manager:$('pManager').value.trim(),priority:$('pPriority').value,status:$('pStatus').value,dueDate:$('pDue').value,notes:$('pNotes').value.trim(),updatedAt:now};
+  if(editingPid){Object.assign(appData.prj.find(x=>x.id===editingPid),f);showToast('تم تحديث المشروع','ok');}
+  else{
+    const max=appData.prj.reduce((m,p)=>Math.max(m,Number(String(p.reference).replace(/\D/g,''))||0),0);
+    const p={id:uid('pg'),reference:'PRJ-'+String(max+1).padStart(3,'0'),...f,vehicles:[],createdAt:now};
+    addVehicles(p,parseVehicles($('pVehicles').value));appData.prj.push(p);editingPid=p.id;showToast('تم إنشاء المشروع','ok');
+    saveData();closeProjectForm();openProject(p.id);return;
+  }
+  saveData();closeProjectForm();renderProjects();
+}
+function deleteProject(){const p=curP();if(!p||!confirm(t(`حذف المشروع ${p.reference} وجميع مركباته؟`)))return;appData.prj=appData.prj.filter(x=>x.id!==p.id);saveData();closeProject();showToast('تم حذف المشروع','ok');}
+
+/* ---------- Wiring ---------- */
+function wire(){
+  $('addWorkBtn').onclick=openAddModal;$('modalCloseBtn').onclick=closeModal;$('cancelFormBtn').onclick=closeModal;$('saveWorkBtn').onclick=saveWorkOrder;
+  $('modalBackdrop').onclick=e=>{if(e.target.id==='modalBackdrop')closeModal();};
+  $('delCloseBtn').onclick=closeDeleteModal;$('delCancelBtn').onclick=closeDeleteModal;
+  $('delConfirmBtn').onclick=()=>{if(pendingDeleteId){appData.workOrders=appData.workOrders.filter(o=>o.id!==pendingDeleteId);saveData();renderAll();showToast('تم حذف أمر العمل','ok');}closeDeleteModal();};
+  $('fmReqQty').oninput=updateRemaining;$('fmDoneQty').oninput=updateRemaining;
+  $('exportCsvBtn').onclick=exportCsv;$('templateCsvBtn').onclick=csvTemplate;$('importCsvBtn').onclick=()=>$('csvFileInput').click();
+  $('csvFileInput').onchange=e=>{if(e.target.files[0])importCsv(e.target.files[0]);e.target.value='';};
+  $('saveConnBtn').onclick=()=>{const c=appData.connectivity,n=id=>Math.max(0,+$(id).value||0);c.afaqy.connected=n('mAfaqyConn');c.afaqy.disconnected=n('mAfaqyDisc');c.renty.connected=n('mRentyConn');c.renty.disconnected=n('mRentyDisc');saveData();renderAll();showToast('تم تحديث بيانات الاتصال','ok');};
+  let t;$('searchInput').oninput=e=>{clearTimeout(t);t=setTimeout(()=>{filters.search=e.target.value.trim();renderAll();},200);};
+  [['fDateFrom','dateFrom'],['fDateTo','dateTo'],['fWorkType','workType'],['fDept','department'],['fPriority','priority'],['fStatus','status']].forEach(([id,k])=>$(id).onchange=e=>{filters[k]=e.target.value;renderAll();});
+  $('resetFiltersBtn').onclick=()=>{Object.keys(filters).forEach(k=>filters[k]='');$('searchInput').value='';['fDateFrom','fDateTo','fWorkType','fDept','fPriority','fStatus'].forEach(i=>$(i).value='');renderAll();};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeDeleteModal();closeProjectForm();}});
+  // projects
+  $('newProjectBtn').onclick=()=>openProjectForm();$('backToProjectsBtn').onclick=closeProject;$('editProjectBtn').onclick=()=>openProjectForm(curPid);$('delProjectBtn').onclick=deleteProject;
+  $('pClose').onclick=closeProjectForm;$('pCancel').onclick=closeProjectForm;$('pSave').onclick=saveProject;$('projectBackdrop').onclick=e=>{if(e.target.id==='projectBackdrop')closeProjectForm();};
+  $('projectSearch').oninput=e=>{pFilters.search=e.target.value.trim();renderProjects();};$('pfStatus').onchange=e=>{pFilters.status=e.target.value;renderProjects();};
+  $('vSaveBtn').onclick=saveVeh;$('vCancelBtn').onclick=resetVehForm;$('vBulkBtn').onclick=bulkAdd;$('vSearch').oninput=renderDetail;$('exportVehBtn').onclick=exportVeh;
+  $('vPlate').onkeydown=e=>{if(e.key==='Enter')saveVeh();};
+}
+try{wire();}catch(e){console.error('wire failed',e);}
+try{initUi();}catch(e){console.error('init failed',e);}
+bootAuth();
+</script>
+</body></html>
